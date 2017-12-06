@@ -3,10 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "bootstrap": "^3.3.7",
+    "google-map-react": "^0.25.0",
+    "lodash": "^4.17.4",
     "react": "^15.4.2",
-    "react-dom": "^15.4.2"
+    "react-bootstrap": "^0.31.5",
+    "react-dom": "^15.4.2",
+    "satori-rtm-sdk": "^1.2.0"
   },
   "devDependencies": {
+    "eslint-config-airbnb": "^16.1.0",
     "react-scripts": "0.9.5"
   },
   "scripts": {
