@@ -1,7 +1,5 @@
 import React, { Component } from "react";
 import { Button, Grid, Table } from "react-bootstrap";
-import get from 'lodash/get';
-import throttle from 'lodash/throttle';
 import GoogleMapReact from "google-map-react";
 import RTM from "satori-rtm-sdk";
 import logo from "./logo.png";
@@ -32,43 +30,47 @@ class App extends Component {
     });
     this.subscription =
       this.client &&
-      this.client.subscribe(this.channel, RTM.SubscriptionMode.SIMPLE);
+      this.client.subscribe(this.channel, RTM.SubscriptionMode.SIMPLE, {
+        filter:
+          "select * from `transportation` where header.`user-data`='trimet'"
+      });
 
     this.state = {
       vehicles: [],
       updating: false,
-      selectedRoute: null,
+      selectedRoute: null
     };
 
     this.listVehicles = this.listVehicles.bind(this);
-  }
-  componentDidUpdate(){
-    this.subscription.on("rtm/subscription/data", pdu => {
-      pdu.body.messages.forEach(msg => {
-        const vehicle = get(msg, 'entity[0].vehicle');
-        if (vehicle){
-          //throttle(vehicle => this.listVehicles(vehicle),1000);
-          this.listVehicles(vehicle);
-        }
-      })
-    });
   }
 
   toggleUpdate = () => {
     if (!this.state.updating) {
       this.client.start();
-      this.setState({ updating: true });
+      let batch = {};
+      batch.vehicles = [];
+      this.subscription.on("rtm/subscription/data", pdu => {
+        pdu.body.messages.forEach(msg => {
+          msg.entity.forEach(i => {
+            batch.vehicles[i.id] = {
+              lat: i.vehicle.position.latitude,
+              lng: i.vehicle.position.longitude,
+              message: i.vehicle.vehicle.label
+            };
+            this.setState({ updating: true, vehicles: batch.vehicles });
+          });
+        });
+      });
+      this.setState({ updating: true, vehicles: batch.vehicles });
     } else {
       this.client.stop();
       this.setState({ updating: false });
     }
   };
 
-  listVehicles (vehicle) {
-    this.setState(state => {
-      state.vehicles.push(vehicle);
-    });
-  };
+  listVehicles(vehicles) {
+    this.setState({ vehicles });
+  }
 
   render() {
     const { updating, vehicles } = this.state;
@@ -79,40 +81,15 @@ class App extends Component {
           <h2>Frontend Coding Exercise</h2>
         </div>
         <Grid>
-          <Table striped bordered condensed hover>
-            <thead>
-            <tr>
-              <th>Route</th>
-              <th>Buses on Route</th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr>
-              <td>Route A</td>
-              <td>3</td>
-            </tr>
-            <tr>
-              <td>Route B</td>
-              <td>6</td>
-            </tr>
-            </tbody>
-          </Table>
           <Button onClick={this.toggleUpdate}>Toggle Updating</Button>
-          <div>Updating: {updating ? 'true': 'false'}</div>
+          <div>Updating: {updating ? "true" : "false"}</div>
           <div style={{ width: "100%", height: "700px" }}>
             <GoogleMapReact
-              defaultCenter={{ lat: 38.805786, lng: -77.062584 }}
+              defaultCenter={{ lat: 45.526477, lng: -122.635928 }}
               defaultZoom={12}
             >
-              {vehicles.length > 0 && vehicles.map(v => {
-                <Vehicle lat={v.position.latitude} lng={v.position.longitude}/>
-              })}
-              <Vehicle lat={38.805786} lng={-77.062584} />
-              <Vehicle lat={38.855786} lng={-77.072584} />
-              <Vehicle lat={38.825786} lng={-77.082584} />
-              <Vehicle lat={38.835786} lng={-77.092584} />
-              <Vehicle lat={38.845786} lng={-77.102584} />
-              <Vehicle lat={38.815786} lng={-77.112584} />
+              {vehicles.length > 0 &&
+                vehicles.map(v => <Vehicle lat={v.lat} lng={v.lng} />)}
             </GoogleMapReact>
           </div>
         </Grid>
